@@ -27,8 +27,8 @@ PM.pages = PM.pages || {};
     },
 
     render(c) {
-      const s = PM.store.get();
-      const tasks = s.tasks;
+      const pj = PM.store.current();
+      const tasks = pj.tasks;
       const total = tasks.length;
       const done = tasks.filter((t) => t.status === "done").length;
       const doing = tasks.filter((t) => t.status === "doing").length;
@@ -67,7 +67,7 @@ PM.pages = PM.pages || {};
       }));
 
       /* ---- 成员负载 ---- */
-      const memberItems = s.members
+      const memberItems = pj.members
         .map((m) => {
           const w = PM.store.memberWorkload(m.id);
           return { label: m.name, value: w.total, color: m.color };
@@ -93,6 +93,11 @@ PM.pages = PM.pages || {};
         .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
         .slice(0, 6);
 
+      /* ---- 里程碑 ---- */
+      const milestonesHtml = pj.milestones.length
+        ? milestonesList(pj.milestones)
+        : emptyHtml("尚未设置里程碑，可在「项目设置 → 里程碑」中创建");
+
       c.innerHTML =
         // 统计卡片
         '<div class="grid stats-grid" style="margin-bottom:18px">' +
@@ -100,8 +105,16 @@ PM.pages = PM.pages || {};
         statCard("进行中", doing, "占总量 " + (total ? Math.round((doing / total) * 100) : 0) + "%", "#f59e0b") +
         statCard("已完成", done, "占总量 " + rate + "%", "#10b981") +
         statCard("逾期任务", overdue, overdue ? "需尽快处理" : "无逾期，状态良好", overdue ? "#ef4444" : "#10b981") +
-        statCard("团队成员", s.members.length, "共 " + s.members.length + " 人协作", "#8b5cf6") +
+        statCard("团队成员", pj.members.length, "共 " + pj.members.length + " 人协作", "#8b5cf6") +
         statCard("完成率", rate + "%", "已交付 " + done + " / " + total, "#4f7cff") +
+        "</div>" +
+
+        // 里程碑进度
+        '<div class="grid" style="margin-bottom:18px">' +
+        '<div class="card card-pad">' +
+        '<div class="card-title">里程碑进度 <span class="sub">（本项目的阶段目标）</span></div>' +
+        milestonesHtml +
+        "</div>" +
         "</div>" +
 
         // 状态分布 + 成员负载
@@ -131,9 +144,31 @@ PM.pages = PM.pages || {};
 
       // 子标题
       const sub = document.getElementById("pageSub");
-      if (sub) sub.textContent = s.project.name;
+      if (sub) sub.textContent = pj.name;
     },
   };
+
+  function milestonesList(list) {
+    const rows = list
+      .map((m) => {
+        const pr = PM.store.milestoneProgress(m.id);
+        const overdue = pr.overdue;
+        const due = m.dueDate ? U.friendlyDate(m.dueDate) : "无截止日";
+        return (
+          '<div class="ms-item">' +
+          '<div class="ms-top">' +
+          '<div class="ms-name"><span class="ms-dot" style="background:' + (m.color || "#4f7cff") + '"></span>' + U.escapeHtml(m.name) + "</div>" +
+          '<div class="ms-meta' + (overdue ? " overdue" : "") + '">' +
+          (overdue ? "⚠ " : "") + pr.done + "/" + pr.total + " · " + due +
+          "</div>" +
+          "</div>" +
+          '<div class="ms-progress"><span style="width:' + pr.pct + "%;background:" + (m.color || "#4f7cff") + '"></span></div>' +
+          "</div>"
+        );
+      })
+      .join("");
+    return '<div class="ms-list">' + rows + "</div>";
+  }
 
   function upcomingList(list) {
     const rows = list

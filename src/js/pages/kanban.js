@@ -1,5 +1,5 @@
 /* ============================================================
-   page: 任务看板（拖拽 + 筛选 + 增改）
+   page: 任务看板（拖拽 + 筛选 + 增改 + 里程碑）
    ============================================================ */
 window.PM = window.PM || {};
 PM.pages = PM.pages || {};
@@ -9,7 +9,7 @@ PM.pages = PM.pages || {};
   const C = PM.constants;
 
   // 模块级筛选状态（跨重渲染保留）
-  const filter = { text: "", assignee: "", priority: "", tag: "" };
+  const filter = { text: "", assignee: "", priority: "", tag: "", milestone: "" };
 
   function match(t) {
     if (filter.text) {
@@ -19,12 +19,13 @@ PM.pages = PM.pages || {};
     if (filter.assignee && (t.assigneeId || "") !== filter.assignee) return false;
     if (filter.priority && t.priority !== filter.priority) return false;
     if (filter.tag && !(t.tags || []).includes(filter.tag)) return false;
+    if (filter.milestone && (t.milestoneId || "") !== filter.milestone) return false;
     return true;
   }
 
   function allTags() {
     const set = new Set();
-    PM.store.get().tasks.forEach((t) => (t.tags || []).forEach((x) => set.add(x)));
+    PM.store.current().tasks.forEach((t) => (t.tags || []).forEach((x) => set.add(x)));
     return Array.from(set).sort();
   }
 
@@ -36,9 +37,10 @@ PM.pages = PM.pages || {};
     },
 
     render(c) {
-      const s = PM.store.get();
-      const members = s.members;
+      const pj = PM.store.current();
+      const members = pj.members;
       const tags = allTags();
+      const milestones = pj.milestones;
 
       c.innerHTML =
         // 工具栏
@@ -50,6 +52,9 @@ PM.pages = PM.pages || {};
         "</select>" +
         '<select id="kbPriority"><option value="">全部优先级</option>' +
         C.PRIORITIES.map((p) => '<option value="' + p.key + '"' + (filter.priority === p.key ? " selected" : "") + ">" + p.label + "</option>").join("") +
+        "</select>" +
+        '<select id="kbMilestone"><option value="">全部里程碑</option>' +
+        milestones.map((m) => '<option value="' + m.id + '"' + (filter.milestone === m.id ? " selected" : "") + ">" + U.escapeHtml(m.name) + "</option>").join("") +
         "</select>" +
         '<select id="kbTag"><option value="">全部标签</option>' +
         tags.map((t) => '<option value="' + U.escapeHtml(t) + '"' + (filter.tag === t ? " selected" : "") + ">" + U.escapeHtml(t) + "</option>").join("") +
@@ -74,15 +79,20 @@ PM.pages = PM.pages || {};
         filter.priority = e.target.value;
         renderBoard(c);
       });
+      c.querySelector("#kbMilestone").addEventListener("change", (e) => {
+        filter.milestone = e.target.value;
+        renderBoard(c);
+      });
       c.querySelector("#kbTag").addEventListener("change", (e) => {
         filter.tag = e.target.value;
         renderBoard(c);
       });
       c.querySelector("#kbClear").addEventListener("click", () => {
-        filter.text = filter.assignee = filter.priority = filter.tag = "";
+        filter.text = filter.assignee = filter.priority = filter.tag = filter.milestone = "";
         c.querySelector("#kbSearch").value = "";
         c.querySelector("#kbAssignee").value = "";
         c.querySelector("#kbPriority").value = "";
+        c.querySelector("#kbMilestone").value = "";
         c.querySelector("#kbTag").value = "";
         renderBoard(c);
       });
@@ -94,8 +104,8 @@ PM.pages = PM.pages || {};
   // 仅重渲染看板区域（保留工具栏输入焦点）
   function renderBoard(c) {
     const board = c.querySelector("#kbBoard");
-    const s = PM.store.get();
-    const total = s.tasks.length;
+    const pj = PM.store.current();
+    const total = pj.tasks.length;
     let shown = 0;
 
     board.innerHTML = C.STATUSES.map((st) => {
@@ -140,7 +150,7 @@ PM.pages = PM.pages || {};
 
     const countEl = c.querySelector("#kbCount");
     if (countEl) {
-      const filtering = filter.text || filter.assignee || filter.priority || filter.tag;
+      const filtering = filter.text || filter.assignee || filter.priority || filter.tag || filter.milestone;
       countEl.textContent = filtering ? "筛选结果 " + shown + " / " + total + " 项" : "共 " + total + " 项";
     }
   }
@@ -158,10 +168,14 @@ PM.pages = PM.pages || {};
     const tags = (t.tags || [])
       .map((x) => '<span class="tag">' + U.escapeHtml(x) + "</span>")
       .join("");
+    const ms = t.milestoneId ? PM.store.milestone(t.milestoneId) : null;
+    const msChip = ms
+      ? '<span class="kc-ms" style="color:' + ms.color + ";background:" + ms.color + '1a"><span class="dot"></span>' + U.escapeHtml(ms.name) + "</span>"
+      : "";
     return (
       '<div class="kb-card" data-id="' + t.id + '" data-status="' + t.status + '" style="border-left-color:' + pColor + '">' +
       '<div class="kc-title">' + U.escapeHtml(t.title) + "</div>" +
-      (tags ? '<div class="kc-tags">' + tags + "</div>" : "") +
+      (tags || msChip ? '<div class="kc-tags">' + tags + msChip + "</div>" : "") +
       '<div class="kc-meta">' + PM.ui.priorityBadge(t.priority) + "</div>" +
       '<div class="kc-foot">' +
       (m ? PM.ui.avatar(m, "sm") : '<span class="muted" style="font-size:12px">未指派</span>') +
@@ -175,10 +189,11 @@ PM.pages = PM.pages || {};
 
   /* ---------------- 任务编辑器 ---------------- */
   function openEditor(taskId, presetStatus) {
-    const s = PM.store.get();
+    const pj = PM.store.current();
     const isEdit = !!taskId;
-    const t = isEdit ? s.tasks.find((x) => x.id === taskId) : null;
-    const members = s.members;
+    const t = isEdit ? pj.tasks.find((x) => x.id === taskId) : null;
+    const members = pj.members;
+    const milestones = pj.milestones;
 
     const memberOpts =
       '<option value="">未指派</option>' +
@@ -195,6 +210,10 @@ PM.pages = PM.pages || {};
       (p) => '<option value="' + p.key + '"' + ((t && t.priority === p.key) || (!t && p.key === "medium") ? " selected" : "") + ">" + p.label + "</option>"
     ).join("");
 
+    const milestoneOpts =
+      '<option value="">无里程碑</option>' +
+      milestones.map((m) => '<option value="' + m.id + '"' + ((t && t.milestoneId === m.id) ? " selected" : "") + ">" + U.escapeHtml(m.name) + "</option>").join("");
+
     const body =
       '<div class="field"><label>任务标题</label><input id="f_title" placeholder="例如：完成登录页开发" value="' + (t ? U.escapeHtml(t.title) : "") + '"/></div>' +
       '<div class="field"><label>描述</label><textarea id="f_desc" placeholder="补充说明（可选）">' + (t ? U.escapeHtml(t.desc || "") : "") + "</textarea></div>" +
@@ -206,6 +225,7 @@ PM.pages = PM.pages || {};
       '<div class="field"><label>负责人</label><select id="f_assignee">' + memberOpts + "</select></div>" +
       '<div class="field"><label>截止日期</label><input id="f_due" type="date" value="' + (t && t.dueDate ? t.dueDate : "") + '"/></div>' +
       "</div>" +
+      '<div class="field"><label>所属里程碑</label><select id="f_milestone">' + milestoneOpts + "</select></div>" +
       '<div class="field"><label>标签（用逗号分隔）</label><input id="f_tags" placeholder="前端, 核心" value="' + (t && t.tags ? U.escapeHtml(t.tags.join(", ")) : "") + '"/></div>';
 
     PM.ui.modal({
@@ -225,6 +245,7 @@ PM.pages = PM.pages || {};
             priority: container.querySelector("#f_priority").value,
             assigneeId: container.querySelector("#f_assignee").value || null,
             dueDate: container.querySelector("#f_due").value || null,
+            milestoneId: container.querySelector("#f_milestone").value || null,
             tags: container
               .querySelector("#f_tags")
               .value.split(/[,，]/)

@@ -17,19 +17,19 @@ PM.pages = PM.pages || {};
     },
 
     render(c) {
-      const s = PM.store.get();
-      const members = s.members;
+      const pj = PM.store.current();
+      const members = pj.members;
 
       c.innerHTML =
         '<div class="row spread" style="margin-bottom:16px">' +
-        '<div class="muted">共 ' + members.length + " 位成员协作</div>" +
+        '<div class="muted">项目「' + U.escapeHtml(pj.name) + '」共 ' + members.length + " 位成员协作</div>" +
         "</div>";
 
       if (!members.length) {
         c.innerHTML +=
-          '<div class="empty"><div class="eicon">👥</div><div>还没有团队成员</div>' +
-          '<button class="btn btn-primary" onclick="">添加第一位成员</button></div>';
-        c.querySelector(".btn-primary").addEventListener("click", () => openEditor(null));
+          '<div class="empty"><div class="eicon">👥</div><div>该项目还没有团队成员</div>' +
+          '<button class="btn btn-primary" id="emptyAdd">添加第一位成员</button></div>';
+        c.querySelector("#emptyAdd").addEventListener("click", () => openEditor(null));
         return;
       }
 
@@ -78,6 +78,7 @@ PM.pages = PM.pages || {};
   };
 
   function openEditor(memberId) {
+    const pj = PM.store.current();
     const isEdit = !!memberId;
     const m = isEdit ? PM.store.member(memberId) : null;
     const color = (m && m.color) || "#4f7cff";

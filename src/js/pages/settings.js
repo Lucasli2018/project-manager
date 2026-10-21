@@ -16,8 +16,8 @@ PM.pages = PM.pages || {};
     action() {},
 
     render(c) {
-      const s = PM.store.get();
-      const p = s.project;
+      const pj = PM.store.current();
+      const p = pj;
 
       const accentSwatches = ACCENTS.map((col) => {
         const sel = (p.accent || "#4f7cff").toLowerCase() === col.toLowerCase();
@@ -59,16 +59,23 @@ PM.pages = PM.pages || {};
         statusLabelRows +
         "</div>" +
 
+        // 里程碑
+        '<div class="card card-pad">' +
+        '<div class="card-title">里程碑 <span class="sub">（阶段目标，可在任务中关联）</span></div>' +
+        '<div id="msWrap">' + milestoneList(pj.milestones) + "</div>" +
+        '<button class="btn" id="s_add_ms" style="margin-top:14px">＋ 新建里程碑</button>' +
+        "</div>" +
+
         // 数据管理
         '<div class="card card-pad">' +
         '<div class="card-title">数据管理</div>' +
-        '<div class="kv-row"><span class="k">本地数据</span><span class="v">' + s.tasks.length + " 任务 · " + s.members.length + " 成员</span></div>" +
+        '<div class="kv-row"><span class="k">本地数据</span><span class="v">' + pj.tasks.length + " 任务 · " + pj.members.length + " 成员 · " + pj.milestones.length + " 里程碑</span></div>" +
         '<div class="row gap-12" style="margin-top:14px">' +
         '<button class="btn btn-primary" id="s_export">导出 JSON</button>' +
         '<button class="btn" id="s_import">导入 JSON</button>' +
         '<input type="file" id="s_import_file" accept="application/json,.json" class="hide"/>' +
         "</div>" +
-        '<p class="muted" style="font-size:12px;margin-top:10px">导出用于备份；导入将<b>覆盖</b>当前全部数据。</p>' +
+        '<p class="muted" style="font-size:12px;margin-top:10px">导出用于备份；导入将<b>覆盖</b>当前全部数据（包含本项目在内的所有项目）。</p>' +
         "</div>" +
 
         // 危险区
@@ -105,16 +112,20 @@ PM.pages = PM.pages || {};
           c.querySelector("#p_accent_custom").value = col;
           PM.store.updateProject({ accent: col });
           applyAccent(col);
+          // 同步顶栏项目切换器的圆点
+          const dot = document.querySelector("#projTrigger .proj-dot");
+          if (dot) dot.style.background = col;
         });
       });
       c.querySelector("#p_accent_custom").addEventListener("input", (e) => {
         const col = e.target.value;
         U.qsa(".swatch[data-accent]", c).forEach((x) => x.classList.remove("sel"));
-        // 仅实时预览，静默写入，避免每次取色都整页重渲染
         PM.store.update((s) => {
-          s.project.accent = col;
+          s.projects[s.currentProjectId].accent = col;
         }, { silent: true });
         applyAccent(col);
+        const dot = document.querySelector("#projTrigger .proj-dot");
+        if (dot) dot.style.background = col;
       });
       c.querySelector("#p_accent_custom").addEventListener("change", () => {
         PM.ui.toast("主题色已保存", "ok");
@@ -128,6 +139,24 @@ PM.pages = PM.pages || {};
         });
       });
 
+      // 里程碑列表事件
+      const msWrap = c.querySelector("#msWrap");
+      if (msWrap) msWrap.innerHTML = milestoneList(pj.milestones);
+      c.querySelectorAll("[data-ms-edit]").forEach((b) =>
+        b.addEventListener("click", () => openMilestoneEditor(b.getAttribute("data-ms-edit")))
+      );
+      c.querySelector("#s_add_ms").addEventListener("click", () => openMilestoneEditor(null));
+      c.querySelectorAll("[data-ms-del]").forEach((b) =>
+        b.addEventListener("click", () => {
+          const id = b.getAttribute("data-ms-del");
+          const m = PM.store.milestone(id);
+          PM.ui.confirm("确定删除里程碑「" + (m ? m.name : "") + "」？关联任务将解除里程碑绑定。", () => {
+            PM.store.deleteMilestone(id);
+            PM.ui.toast("里程碑已删除", "ok");
+          });
+        })
+      );
+
       // 导出 / 导入 / 重置
       c.querySelector("#s_export").addEventListener("click", () => PM.io.exportJSON());
       const fileInput = c.querySelector("#s_import_file");
@@ -138,12 +167,92 @@ PM.pages = PM.pages || {};
         }
       });
       c.querySelector("#s_reset").addEventListener("click", () => {
-        PM.ui.confirm("确定恢复演示数据？当前所有任务与成员将被覆盖。", () => {
+        PM.ui.confirm("确定恢复演示数据？当前所有项目、任务与成员将被覆盖。", () => {
           PM.store.reset();
-          if (PM.app && PM.app.applyAccent) PM.app.applyAccent(PM.store.get().project.accent);
+          if (PM.app && PM.app.applyAccent) PM.app.applyAccent(PM.store.current().accent);
           PM.ui.toast("已恢复演示数据", "ok");
         });
       });
     },
   };
+
+  function milestoneList(list) {
+    if (!list.length) return '<div class="muted" style="font-size:12.5px">暂无里程碑，点击下方按钮创建。</div>';
+    return (
+      '<div class="ms-list">' +
+      list
+        .map((m) => {
+          const pr = PM.store.milestoneProgress(m.id);
+          const meta =
+            (pr.total ? pr.done + "/" + pr.total + " 完成 · " + pr.pct + "%" : "暂无关联任务") +
+            (m.dueDate ? " · 截止 " + U.friendlyDate(m.dueDate) : "") +
+            (pr.overdue ? " · ⚠ 已逾期" : "");
+          return (
+            '<div class="ms-item">' +
+            '<div class="ms-top">' +
+            '<div class="ms-name"><span class="ms-dot" style="background:' + (m.color || "#4f7cff") + '"></span>' + U.escapeHtml(m.name) + "</div>" +
+            '<div style="display:flex;gap:6px">' +
+            '<button class="btn btn-sm" data-ms-edit="' + m.id + '">编辑</button>' +
+            '<button class="btn btn-sm btn-danger" data-ms-del="' + m.id + '">删除</button>' +
+            "</div>" +
+            "</div>" +
+            '<div class="ms-meta' + (pr.overdue ? " overdue" : "") + '">' + U.escapeHtml(meta) + "</div>" +
+            '<div class="ms-progress"><span style="width:' + pr.pct + "%;background:" + (m.color || "#4f7cff") + '"></span></div>' +
+            "</div>"
+          );
+        })
+        .join("") +
+      "</div>"
+    );
+  }
+
+  function openMilestoneEditor(msId) {
+    const isEdit = !!msId;
+    const m = isEdit ? PM.store.milestone(msId) : null;
+    const color = (m && m.color) || "#4f7cff";
+    const body =
+      '<div class="field"><label>里程碑名称</label><input id="ms_name" placeholder="例如：V1.0 公测" value="' + (m ? U.escapeHtml(m.name) : "") + '"/></div>' +
+      '<div class="field"><label>描述</label><textarea id="ms_desc" placeholder="可选">'+ (m ? U.escapeHtml(m.desc || "") : "") + '</textarea></div>' +
+      '<div class="field-row">' +
+      '<div class="field"><label>截止日期</label><input id="ms_due" type="date" value="' + (m && m.dueDate ? m.dueDate : "") + '"/></div>' +
+      '<div class="field"><label>颜色</label><input type="color" id="ms_color" value="' + color + '" style="width:46px;height:38px;padding:2px"/></div>' +
+      "</div>";
+    PM.ui.modal({
+      title: isEdit ? "编辑里程碑" : "新建里程碑",
+      body,
+      onMount(container, close) {
+        const save = () => {
+          const name = container.querySelector("#ms_name").value.trim();
+          if (!name) {
+            PM.ui.toast("请填写名称", "err");
+            return;
+          }
+          const data = {
+            name,
+            desc: container.querySelector("#ms_desc").value.trim(),
+            dueDate: container.querySelector("#ms_due").value || null,
+            color: container.querySelector("#ms_color").value,
+          };
+          if (isEdit) PM.store.updateMilestone(msId, data);
+          else PM.store.addMilestone(data);
+          PM.ui.toast(isEdit ? "里程碑已更新" : "里程碑已创建", "ok");
+          close();
+        };
+        const foot = document.querySelector(".modal-foot");
+        if (foot) {
+          foot.innerHTML = "";
+          foot.appendChild(mkBtn("取消", "btn", close));
+          foot.appendChild(mkBtn("保存", "btn btn-primary", save));
+        }
+      },
+    });
+  }
+
+  function mkBtn(label, cls, onClick) {
+    const b = document.createElement("button");
+    b.className = cls;
+    b.textContent = label;
+    b.addEventListener("click", onClick);
+    return b;
+  }
 })();
