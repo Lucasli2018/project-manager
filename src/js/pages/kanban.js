@@ -41,8 +41,9 @@ PM.pages = PM.pages || {};
       const members = pj.members;
       const tags = allTags();
       const milestones = pj.milestones;
+      const total = pj.tasks.length;
 
-      c.innerHTML =
+      const toolbarHTML =
         // 工具栏
         '<div class="kb-toolbar">' +
         '<div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>' +
@@ -61,41 +62,43 @@ PM.pages = PM.pages || {};
         "</select>" +
         '<button class="btn btn-ghost btn-sm" id="kbClear">清除筛选</button>' +
         '<span class="kb-filter-count" id="kbCount"></span>' +
-        "</div>" +
-        // 看板
-        '<div class="board" id="kbBoard"></div>';
+        "</div>";
 
-      // 工具栏事件
-      const search = c.querySelector("#kbSearch");
-      search.addEventListener("input", () => {
-        filter.text = search.value.trim();
-        renderBoard(c);
-      });
-      c.querySelector("#kbAssignee").addEventListener("change", (e) => {
-        filter.assignee = e.target.value;
-        renderBoard(c);
-      });
-      c.querySelector("#kbPriority").addEventListener("change", (e) => {
-        filter.priority = e.target.value;
-        renderBoard(c);
-      });
-      c.querySelector("#kbMilestone").addEventListener("change", (e) => {
-        filter.milestone = e.target.value;
-        renderBoard(c);
-      });
-      c.querySelector("#kbTag").addEventListener("change", (e) => {
-        filter.tag = e.target.value;
-        renderBoard(c);
-      });
-      c.querySelector("#kbClear").addEventListener("click", () => {
-        filter.text = filter.assignee = filter.priority = filter.tag = filter.milestone = "";
-        c.querySelector("#kbSearch").value = "";
-        c.querySelector("#kbAssignee").value = "";
-        c.querySelector("#kbPriority").value = "";
-        c.querySelector("#kbMilestone").value = "";
-        c.querySelector("#kbTag").value = "";
-        renderBoard(c);
-      });
+      // 空项目：隐藏筛选工具栏，仅展示引导面板
+      c.innerHTML = (total === 0 ? "" : toolbarHTML) + '<div class="board" id="kbBoard"></div>';
+
+      if (total !== 0) {
+        const search = c.querySelector("#kbSearch");
+        search.addEventListener("input", () => {
+          filter.text = search.value.trim();
+          renderBoard(c);
+        });
+        c.querySelector("#kbAssignee").addEventListener("change", (e) => {
+          filter.assignee = e.target.value;
+          renderBoard(c);
+        });
+        c.querySelector("#kbPriority").addEventListener("change", (e) => {
+          filter.priority = e.target.value;
+          renderBoard(c);
+        });
+        c.querySelector("#kbMilestone").addEventListener("change", (e) => {
+          filter.milestone = e.target.value;
+          renderBoard(c);
+        });
+        c.querySelector("#kbTag").addEventListener("change", (e) => {
+          filter.tag = e.target.value;
+          renderBoard(c);
+        });
+        c.querySelector("#kbClear").addEventListener("click", () => {
+          filter.text = filter.assignee = filter.priority = filter.tag = filter.milestone = "";
+          c.querySelector("#kbSearch").value = "";
+          c.querySelector("#kbAssignee").value = "";
+          c.querySelector("#kbPriority").value = "";
+          c.querySelector("#kbMilestone").value = "";
+          c.querySelector("#kbTag").value = "";
+          renderBoard(c);
+        });
+      }
 
       renderBoard(c);
     },
@@ -106,6 +109,17 @@ PM.pages = PM.pages || {};
     const board = c.querySelector("#kbBoard");
     const pj = PM.store.current();
     const total = pj.tasks.length;
+
+    // 空项目：展示「看板空状态引导」
+    if (total === 0) {
+      board.innerHTML = emptyStateHTML();
+      const btn = board.querySelector("#kbCreateFirst");
+      if (btn) btn.addEventListener("click", () => openEditor(null, "todo"));
+      const countEl = c.querySelector("#kbCount");
+      if (countEl) countEl.textContent = "";
+      return;
+    }
+
     let shown = 0;
 
     board.innerHTML = C.STATUSES.map((st) => {
@@ -159,6 +173,31 @@ PM.pages = PM.pages || {};
     if (!dragId) return;
     PM.store.moveTask(dragId, newStatus, beforeId);
     // store.emit 会触发整页重渲染；这里无需手动 renderBoard
+  }
+
+  // 空项目看板引导面板
+  function emptyStateHTML() {
+    const pj = PM.store.current();
+    return (
+      '<div class="kb-empty-state">' +
+      '<div class="es-illu">' +
+      '<svg viewBox="0 0 132 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<rect x="6" y="14" width="34" height="72" rx="8" fill="var(--surface-3)" stroke="var(--border)"/>' +
+      '<rect x="49" y="14" width="34" height="72" rx="8" fill="var(--surface-3)" stroke="var(--border)"/>' +
+      '<rect x="92" y="14" width="34" height="72" rx="8" fill="var(--surface-3)" stroke="var(--border)"/>' +
+      '<rect x="12" y="22" width="22" height="13" rx="4" fill="#fff" stroke="var(--border)"/>' +
+      '<rect x="12" y="40" width="22" height="13" rx="4" fill="#fff" stroke="var(--border)"/>' +
+      '<rect x="55" y="22" width="22" height="13" rx="4" fill="var(--accent-weak)" stroke="var(--accent)"/>' +
+      '<circle cx="110" cy="74" r="15" fill="var(--accent)"/>' +
+      '<path d="M110 67v14M103 74h14" stroke="#fff" stroke-width="3" stroke-linecap="round"/>' +
+      "</svg>" +
+      "</div>" +
+      '<div class="es-title">看板还没有任务</div>' +
+      '<div class="es-sub">为「' + U.escapeHtml(pj.name) + "」添加第一个任务，开始用看板管理工作流吧</div>" +
+      '<button class="btn btn-primary btn-lg" id="kbCreateFirst">＋ 新建第一个任务</button>' +
+      '<div class="es-tip">提示：可在「团队成员」邀请协作伙伴，在「项目设置 · 里程碑」规划关键节点</div>' +
+      "</div>"
+    );
   }
 
   function cardHTML(t) {
