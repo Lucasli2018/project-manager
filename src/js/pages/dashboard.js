@@ -30,6 +30,17 @@ PM.pages = PM.pages || {};
       const pj = PM.store.current();
       const tasks = pj.tasks;
       const total = tasks.length;
+
+      // 空项目：轻量引导（保持四页体验一致）
+      if (total === 0) {
+        c.innerHTML = emptyGuideHTML();
+        const btn = c.querySelector("#dashGoKanban");
+        if (btn) btn.addEventListener("click", () => PM.router.go("kanban"));
+        const sub = document.getElementById("pageSub");
+        if (sub) sub.textContent = pj.name;
+        return;
+      }
+
       const done = tasks.filter((t) => t.status === "done").length;
       const doing = tasks.filter((t) => t.status === "doing").length;
       const todo = tasks.filter((t) => t.status === "todo").length;
@@ -194,5 +205,27 @@ PM.pages = PM.pages || {};
 
   function emptyHtml(text) {
     return '<div class="empty"><div class="eicon">✓</div><div>' + U.escapeHtml(text) + "</div></div>";
+  }
+
+  // 空项目仪表盘轻量引导
+  function emptyGuideHTML() {
+    const pj = PM.store.current();
+    return (
+      '<div class="dash-empty-state">' +
+      '<div class="des-illu">' +
+      '<svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<rect x="12" y="16" width="72" height="64" rx="10" fill="var(--surface-3)" stroke="var(--border)"/>' +
+      '<rect x="22" y="48" width="10" height="22" rx="3" fill="var(--accent)"/>' +
+      '<rect x="38" y="36" width="10" height="34" rx="3" fill="var(--accent)"/>' +
+      '<rect x="54" y="44" width="10" height="26" rx="3" fill="var(--accent-weak)" stroke="var(--accent)"/>' +
+      '<circle cx="72" cy="34" r="9" fill="var(--accent)"/>' +
+      '<path d="M72 29v10M67 34h10" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>' +
+      "</svg>" +
+      "</div>" +
+      '<div class="des-title">这个项目还没有数据</div>' +
+      '<div class="des-sub">在「' + U.escapeHtml(pj.name) + "」中添加第一个任务，仪表盘就会开始展示进度、统计与趋势</div>" +
+      '<button class="btn btn-primary btn-lg" id="dashGoKanban">前往任务看板</button>' +
+      "</div>"
+    );
   }
 })();

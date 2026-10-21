@@ -235,6 +235,22 @@
 .kb-empty-state .es-sub { font-size: 13.5px; color: var(--text-3); max-width: 400px; margin-bottom: 22px; line-height: 1.6; }
 .kb-empty-state .es-tip { margin-top: 18px; font-size: 12px; color: var(--text-3); }
 
+/* ---------- 仪表盘空状态引导 ---------- */
+.dash-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 56px 20px;
+  min-height: 54vh;
+  color: var(--text-2);
+}
+.dash-empty-state .des-illu { width: 120px; max-width: 50%; margin-bottom: 20px; }
+.dash-empty-state .des-illu svg { width: 100%; height: auto; display: block; }
+.dash-empty-state .des-title { font-size: 18px; font-weight: 700; color: var(--text-1); margin-bottom: 8px; }
+.dash-empty-state .des-sub { font-size: 13.5px; color: var(--text-3); max-width: 400px; margin-bottom: 22px; line-height: 1.6; }
+
 /* ---------- 团队成员 ---------- */
 .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 .member-card {
