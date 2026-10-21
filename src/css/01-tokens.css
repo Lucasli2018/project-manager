@@ -1,0 +1,64 @@
+/* ============================================================
+   设计令牌 — 现代中性蓝灰主题
+   强调色 --accent 可在「项目设置」中实时更换
+   ============================================================ */
+:root {
+  /* 背景与表面 */
+  --bg: #eef2f7;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #f1f5f9;
+
+  /* 侧边栏（深色） */
+  --sidebar-bg: #0f172a;
+  --sidebar-bg-2: #111c33;
+  --sidebar-fg: #cbd5e1;
+  --sidebar-fg-dim: #64748b;
+  --sidebar-active: #1e293b;
+  --sidebar-active-bar: #4f7cff;
+
+  /* 文本 */
+  --text: #1e293b;
+  --text-2: #475569;
+  --text-3: #94a3b8;
+
+  /* 边框与分割 */
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  /* 强调色（可换） */
+  --accent: #4f7cff;
+  --accent-strong: #3b66e6;
+  --accent-weak: #eef2ff;
+
+  /* 语义色 */
+  --success: #10b981;
+  --success-weak: #ecfdf5;
+  --warning: #f59e0b;
+  --warning-weak: #fffbeb;
+  --danger: #ef4444;
+  --danger-weak: #fef2f2;
+  --info: #3b82f6;
+
+  /* 圆角 */
+  --r-lg: 16px;
+  --r: 12px;
+  --r-sm: 8px;
+  --r-xs: 6px;
+
+  /* 阴影 */
+  --shadow: 0 1px 2px rgba(15, 23, 42, .06), 0 1px 3px rgba(15, 23, 42, .08);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, .08);
+  --shadow-lg: 0 18px 48px rgba(15, 23, 42, .18);
+
+  /* 字体 */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+
+  /* 尺寸 */
+  --sidebar-w: 248px;
+  --topbar-h: 72px;
+}
+
+/* 强调色预设（供设置页使用，通过 JS 写入 --accent） */

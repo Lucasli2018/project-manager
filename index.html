@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>项目管理 · Project Manager</title>
+  <link rel="stylesheet" href="src/css/01-tokens.css" />
+  <link rel="stylesheet" href="src/css/02-base.css" />
+  <link rel="stylesheet" href="src/css/03-components.css" />
+  <link rel="stylesheet" href="src/css/04-layout.css" />
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="brand">
+        <div class="brand-logo">PM</div>
+        <div class="brand-text">
+          <div class="brand-name" id="brandName">项目管理</div>
+          <div class="brand-sub">Project Manager</div>
+        </div>
+      </div>
+      <nav id="nav"></nav>
+      <div class="sidebar-foot">
+        <span class="dot"></span> 本地数据 · 已自动保存
+      </div>
+    </aside>
+
+    <main id="main">
+      <header id="topbar">
+        <div>
+          <div class="topbar-title" id="pageTitle">仪表盘总览</div>
+          <div class="topbar-sub" id="pageSub"></div>
+        </div>
+        <div class="topbar-actions" id="pageActions"></div>
+      </header>
+      <section id="app-content"></section>
+    </main>
+  </div>
+
+  <!-- 模态框挂载点 -->
+  <div id="modal-root"></div>
+  <div id="toast-root"></div>
+
+  <!-- 核心层 -->
+  <script src="src/js/core/utils.js"></script>
+  <script src="src/js/core/constants.js"></script>
+  <script src="src/js/core/store.js"></script>
+  <script src="src/js/core/router.js"></script>
+  <script src="src/js/core/ui.js"></script>
+  <!-- 数据 -->
+  <script src="src/js/data/seed.js"></script>
+  <!-- 功能模块 -->
+  <script src="src/js/features/charts.js"></script>
+  <script src="src/js/features/dnd.js"></script>
+  <script src="src/js/features/importexport.js"></script>
+  <!-- 页面 -->
+  <script src="src/js/pages/dashboard.js"></script>
+  <script src="src/js/pages/kanban.js"></script>
+  <script src="src/js/pages/team.js"></script>
+  <script src="src/js/pages/settings.js"></script>
+  <!-- 启动 -->
+  <script src="src/js/boot.js"></script>
+</body>
+</html>
