@@ -293,6 +293,8 @@ window.PM = window.PM || {};
     document.getElementById("brandName").textContent = "项目管理";
     buildNav();
     buildProjectSwitch();
+    const npb = document.getElementById("newProjectBtn");
+    if (npb) npb.addEventListener("click", () => openCreateProject());
     // 状态变化时自动重渲染当前页
     Store.subscribe(() => App.render());
     PM.router.start(() => App.render());
